@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import { z } from "zod"
 import { SignInSchema } from "../../components/forms/sign-in/schema"
 
+// Hook for handling Sign-In with Clerk
 export const useAuthSignIn = () => {
   const { isLoaded, setActive, signIn } = useSignIn()
   const {
@@ -24,11 +25,14 @@ export const useAuthSignIn = () => {
   })
 
   const router = useRouter()
+
   const onClerkAuth = async (email: string, password: string) => {
-    if (!isLoaded)
+    if (!isLoaded) {
       return toast("Error", {
-        description: "Oops! something went wrong",
+        description: "Clerk is not loaded. Please wait and try again.",
       })
+    }
+
     try {
       const authenticated = await signIn.create({
         identifier: email,
@@ -37,17 +41,30 @@ export const useAuthSignIn = () => {
 
       if (authenticated.status === "complete") {
         reset()
-        await setActive({ session: authenticated.createdSessionId })
-        toast("Success", {
-          description: "Welcome back!",
-        })
-        router.push("/callback/sign-in")
+        try {
+          await setActive({ session: authenticated.createdSessionId })
+          toast("Success", {
+            description: "Welcome back!",
+          })
+          router.push("/callback/sign-in")
+        } catch (error) {
+          toast("Error", {
+            description: "Failed to set the session. Please try again.",
+          })
+          console.error("Error setting session:", error)
+        }
       }
     } catch (error: any) {
-      if (error.errors[0].code === "form_password_incorrect")
+      if (error.errors[0].code === "form_password_incorrect") {
         toast("Error", {
-          description: "email/password is incorrect try again",
+          description: "email/password is incorrect, try again",
         })
+      } else {
+        console.error("Unknown error during authentication:", error)
+        toast("Error", {
+          description: "An unexpected error occurred. Please try again later.",
+        })
+      }
     }
   }
 
@@ -68,6 +85,7 @@ export const useAuthSignIn = () => {
   }
 }
 
+// Hook for handling Sign-Up with Clerk, including verification code generation
 export const useAuthSignUp = () => {
   const { setActive, isLoaded, signUp } = useSignUp()
   const [creating, setCreating] = useState<boolean>(false)
@@ -88,10 +106,11 @@ export const useAuthSignUp = () => {
   const router = useRouter()
 
   const onGenerateCode = async (email: string, password: string) => {
-    if (!isLoaded)
+    if (!isLoaded) {
       return toast("Error", {
         description: "Oops! something went wrong",
       })
+    }
     try {
       if (email && password) {
         await signUp.create({
@@ -111,14 +130,18 @@ export const useAuthSignUp = () => {
       }
     } catch (error) {
       console.error(JSON.stringify(error, null, 2))
+      toast("Error", {
+        description: "Error occurred while generating code.",
+      })
     }
   }
 
   const onInitiateUserRegistration = handleSubmit(async (values) => {
-    if (!isLoaded)
+    if (!isLoaded) {
       return toast("Error", {
         description: "Oops! something went wrong",
       })
+    }
 
     try {
       setCreating(true)
@@ -128,12 +151,13 @@ export const useAuthSignUp = () => {
 
       if (completeSignUp.status !== "complete") {
         return toast("Error", {
-          description: "Oops! something went wrong, status in complete",
+          description: "Oops! something went wrong, status incomplete",
         })
       }
 
       if (completeSignUp.status === "complete") {
         if (!signUp.createdUserId) return
+
         const user = await onSignUpUser({
           firstname: values.firstname,
           lastname: values.lastname,
@@ -147,24 +171,31 @@ export const useAuthSignUp = () => {
           toast("Success", {
             description: user.message,
           })
-          await setActive({
-            session: completeSignUp.createdSessionId,
-          })
-          router.push(`/group/create`)
-        }
-        if (user.status !== 200) {
+          try {
+            await setActive({
+              session: completeSignUp.createdSessionId,
+            })
+            router.push(`/group/create`)
+          } catch (error) {
+            toast("Error", {
+              description: "Failed to set the session.",
+            })
+            console.error("Session activation error:", error)
+          }
+        } else {
           toast("Error", {
-            description: user.message + "action failed",
+            description: user.message + " action failed",
           })
-          router.refresh
+          router.refresh()
         }
         setCreating(false)
         setVerifying(false)
-      } else {
-        console.error(JSON.stringify(completeSignUp, null, 2))
       }
     } catch (error) {
       console.error(JSON.stringify(error, null, 2))
+      toast("Error", {
+        description: "An error occurred during sign-up.",
+      })
     }
   })
 
@@ -181,6 +212,7 @@ export const useAuthSignUp = () => {
   }
 }
 
+// Hook for handling Google OAuth with Clerk
 export const useGoogleAuth = () => {
   const { signIn, isLoaded: LoadedSignIn } = useSignIn()
   const { signUp, isLoaded: LoadedSignUp } = useSignUp()
@@ -194,7 +226,10 @@ export const useGoogleAuth = () => {
         redirectUrlComplete: "/callback/sign-in",
       })
     } catch (error) {
-      console.error(error)
+      console.error("Google Sign-in Error:", error)
+      toast("Error", {
+        description: "Google sign-in failed. Please try again.",
+      })
     }
   }
 
@@ -207,7 +242,10 @@ export const useGoogleAuth = () => {
         redirectUrlComplete: "/callback/complete",
       })
     } catch (error) {
-      console.error(error)
+      console.error("Google Sign-up Error:", error)
+      toast("Error", {
+        description: "Google sign-up failed. Please try again.",
+      })
     }
   }
 

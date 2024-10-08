@@ -10,7 +10,14 @@ type Props = {
 const AuthLayout = async ({ children }: Props) => {
   const user = await onAuthenticatedUser()
 
-  if (user.status === 200) redirect("/callback/sign-in")
+  // Handle user statuses more granularly
+  if (user.status === 200) {
+    redirect("/dashboard") // Redirect authenticated users to their dashboard
+  } else if (user.status === 404) {
+    redirect("/sign-in") // Redirect unauthenticated users to sign-in page
+  } else {
+    console.error("Unknown status:", user.status)
+  }
 
   return (
     <div className="container h-screen flex justify-center items-center">
