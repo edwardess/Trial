@@ -8,6 +8,8 @@ export const onAuthenticatedUser = async () => {
   console.log("onAuthenticatedUser: Initiating authentication flow...")
   try {
     const clerk = await currentUser()
+
+    // Check if the user is authenticated
     if (!clerk) {
       console.log("onAuthenticatedUser: No authenticated user found.")
       return { status: 404 }
@@ -17,6 +19,7 @@ export const onAuthenticatedUser = async () => {
       `onAuthenticatedUser: Authenticated user found with Clerk ID: ${clerk.id}`,
     )
 
+    // Query the database for the authenticated user
     const user = await client.user.findUnique({
       where: {
         clerkId: clerk.id,
@@ -28,6 +31,7 @@ export const onAuthenticatedUser = async () => {
       },
     })
 
+    // Check if user exists in the database
     if (user) {
       console.log(
         `onAuthenticatedUser: User found in database with ID: ${user.id}`,
@@ -40,11 +44,13 @@ export const onAuthenticatedUser = async () => {
       }
     }
 
+    // User not found in the database
     console.log("onAuthenticatedUser: User not found in database.")
     return {
       status: 404,
     }
   } catch (error) {
+    // Catch and log any errors during the process
     console.error(
       "onAuthenticatedUser: Error occurred during authentication:",
       error,
@@ -63,12 +69,14 @@ export const onSignUpUser = async (data: {
 }) => {
   console.log("onSignUpUser: Starting user sign-up process...")
   try {
+    // Create a new user in the database
     const createdUser = await client.user.create({
       data: {
         ...data,
       },
     })
 
+    // Log and return success if the user is created
     if (createdUser) {
       console.log(
         `onSignUpUser: User successfully created with ID: ${createdUser.id}`,
@@ -80,12 +88,14 @@ export const onSignUpUser = async (data: {
       }
     }
 
+    // If the user creation fails, log and return the error
     console.log("onSignUpUser: Failed to create user in the database.")
     return {
       status: 400,
       message: "User could not be created! Try again",
     }
   } catch (error) {
+    // Catch and log any errors during the sign-up process
     console.error("onSignUpUser: Error occurred during sign-up:", error)
     return {
       status: 400,
@@ -99,6 +109,7 @@ export const onSignInUser = async (clerkId: string) => {
     `onSignInUser: Attempting to log in user with Clerk ID: ${clerkId}...`,
   )
   try {
+    // Find the logged-in user in the database
     const loggedInUser = await client.user.findUnique({
       where: {
         clerkId,
@@ -122,6 +133,7 @@ export const onSignInUser = async (clerkId: string) => {
       },
     })
 
+    // Check if the user exists and belongs to any groups and channels
     if (loggedInUser) {
       console.log(`onSignInUser: User found with ID: ${loggedInUser.id}`)
       if (
@@ -139,6 +151,7 @@ export const onSignInUser = async (clerkId: string) => {
         }
       }
 
+      // User found but no groups or channels
       console.log(`onSignInUser: User logged in without group/channel.`)
       return {
         status: 200,
@@ -147,12 +160,14 @@ export const onSignInUser = async (clerkId: string) => {
       }
     }
 
+    // User not found in the database
     console.log("onSignInUser: User not found in the database.")
     return {
       status: 400,
       message: "User could not be logged in! Try again",
     }
   } catch (error) {
+    // Catch and log any errors during the sign-in process
     console.error("onSignInUser: Error occurred during login:", error)
     return {
       status: 400,

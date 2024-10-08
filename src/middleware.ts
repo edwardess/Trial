@@ -12,9 +12,15 @@ export default clerkMiddleware(async (auth, req) => {
   const reqPath = req.nextUrl.pathname
   const origin = req.nextUrl.origin || process.env.NEXT_PUBLIC_BASE_URL
 
+  // Check if the user is authenticated
+  const session = auth().sessionId
+
   // Protect the route if it's a protected path (e.g., /group)
   if (isProtectedRoute(req)) {
-    await auth().protect()
+    if (!session) {
+      console.log("No authenticated session, redirecting to sign-in.")
+      return NextResponse.redirect(`${origin}/sign-in`)
+    }
   }
 
   // Rewrite logic for specific cases when host is not equal to baseHost
